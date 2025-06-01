@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -44,8 +44,6 @@ import {
   Download as DownloadIcon,
   LocalShipping as LocalShippingIcon
 } from '@mui/icons-material';
-import Select from 'react-select';
-import { FaTachometerAlt, FaUsers, FaUserFriends, FaExchangeAlt, FaMoneyCheckAlt, FaMoneyBillWave, FaShoppingCart, FaChartBar, FaChartPie } from 'react-icons/fa';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -72,19 +70,6 @@ ChartJS.register(
 );
 
 // Utility functions
-const validateInput = (value, type) => {
-  switch(type) {
-    case 'number':
-      return !isNaN(value) && Number(value) >= 0;
-    case 'orderNumber':
-      return /^[A-Za-z0-9-]+$/.test(value);
-    case 'description':
-      return value.length <= 500;
-    default:
-      return true;
-  }
-};
-
 const validateTransaction = (transaction) => {
   if (!transaction) return false;
   
@@ -107,30 +92,6 @@ const validateTransaction = (transaction) => {
     default:
       return false;
   }
-};
-
-const safeCalculate = (fn) => {
-  try {
-    return fn();
-  } catch (error) {
-    console.error('Calculation error:', error);
-    return 0;
-  }
-};
-
-const logError = (error, context) => {
-  console.error(`Error in ${context}:`, error);
-};
-
-const logTransaction = (transaction, action) => {
-  console.log(`Transaction ${action}:`, {
-    type: transaction.type,
-    amount: transaction.amount,
-    currency: transaction.currency,
-    person: transaction.person,
-    date: new Date().toISOString(),
-    user: transaction.user
-  });
 };
 
 const handleTransaction = (transaction, action) => {
@@ -1235,11 +1196,11 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [orderStatus, setOrderStatus] = useState('active');
+  const [orderStatus] = useState('pending'); // Remove setOrderStatus if not used
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [orderNote, setOrderNote] = useState('');
+  const [orderNote, setOrderNote] = useState(''); // Remove setOrderNote if not used
   const [newCategory, setNewCategory] = useState('');
   const [editCategory, setEditCategory] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -2081,17 +2042,83 @@ function Transfer({ persons, transactions, setTransactions, user }) {
   );
 }
 function Reports({ transactions, setTransactions, search, ToastContext }) {
-  const { showToast } = React.useContext(ToastContext || React.createContext());
-  const [msg, setMsg] = useState('');
-  const [deleteIdx, setDeleteIdx] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editIdx, setEditIdx] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [msg, setMsg] = useState('');
+  const [searchTerm] = useState('');
+  const [deleteIdx, setDeleteIdx] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedType, setSelectedType] = useState('');
+  const navigate = useNavigate();
   const { t } = useTranslation();
+  const { showToast } = useContext(ToastContext);
+
+  // Fix useCallback dependencies
+  const handleEdit = useCallback((idx) => {
+    const transaction = transactions[idx];
+    if (!transaction) return;
+    setEditIdx(idx);
+    setEditData({...transaction});
+  }, [transactions]);
+
+  const saveEdit = useCallback(() => {
+    if (!editData || !validateTransaction(editData)) {
+      setMsg(t('invalidTransactionData'));
+      return;
+    }
+
+    if (handleTransaction(editData, 'updated')) {
+      const newTransactions = [...transactions];
+      newTransactions[editIdx] = editData;
+      setTransactions(newTransactions);
+      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
+      setMsg(t('transactionUpdated'));
+      showToast(t('transactionUpdated'), 'success');
+      setEditIdx(null);
+      setEditData(null);
+      setTimeout(() => setMsg(''), 1500);
+    } else {
+      setMsg(t('updateError'));
+      showToast(t('updateError'), 'error');
+    }
+  }, [editData, editIdx, transactions, setTransactions, t, showToast]);
+
+  const cancelEdit = useCallback(() => {
+    setEditIdx(null);
+    setEditData(null);
+  }, []);
+
+  const handleDelete = useCallback(idx => {
+    setDeleteIdx(idx);
+    setShowDeleteModal(true);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
+    if (deleteIdx === null) return;
+    
+    const transaction = transactions[deleteIdx];
+    if (!transaction) {
+      setMsg(t('transactionNotFound'));
+      return;
+    }
+
+    if (handleTransaction(transaction, 'deleted')) {
+      const newTransactions = transactions.filter((_, i) => i !== deleteIdx);
+      setTransactions(newTransactions);
+      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
+      setMsg(t('transactionDeleted'));
+      showToast(t('transactionDeleted'), 'success');
+      setDeleteIdx(null);
+      setShowDeleteModal(false);
+      setTimeout(() => setMsg(''), 1500);
+    } else {
+      setMsg(t('deleteError'));
+      showToast(t('deleteError'), 'error');
+    }
+  }, [deleteIdx, transactions, setTransactions, t, showToast]);
 
   // Get unique persons from transactions
   const getUniquePersons = () => {
@@ -2155,70 +2182,6 @@ function Reports({ transactions, setTransactions, search, ToastContext }) {
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return filtered;
-  };
-
-  const handleDelete = idx => {
-    setDeleteIdx(idx);
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = () => {
-    if (deleteIdx === null) return;
-    
-    const transaction = transactions[deleteIdx];
-    if (!transaction) {
-      setMsg(t('transactionNotFound'));
-      return;
-    }
-
-    if (handleTransaction(transaction, 'deleted')) {
-      const newTransactions = transactions.filter((_, i) => i !== deleteIdx);
-      setTransactions(newTransactions);
-      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
-      setMsg(t('transactionDeleted'));
-      showToast(t('transactionDeleted'), 'success');
-    setDeleteIdx(null);
-      setShowDeleteModal(false);
-    setTimeout(() => setMsg(''), 1500);
-    } else {
-      setMsg(t('deleteError'));
-      showToast(t('deleteError'), 'error');
-    }
-  };
-
-  const handleEdit = (idx) => {
-    const transaction = transactions[idx];
-    if (!transaction) return;
-    
-    setEditIdx(idx);
-    setEditData({...transaction});
-  };
-
-  const saveEdit = () => {
-    if (!editData || !validateTransaction(editData)) {
-      setMsg(t('invalidTransactionData'));
-      return;
-    }
-
-    if (handleTransaction(editData, 'updated')) {
-      const newTransactions = [...transactions];
-      newTransactions[editIdx] = editData;
-      setTransactions(newTransactions);
-      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
-      setMsg(t('transactionUpdated'));
-      showToast(t('transactionUpdated'), 'success');
-      setEditIdx(null);
-      setEditData(null);
-      setTimeout(() => setMsg(''), 1500);
-    } else {
-      setMsg(t('updateError'));
-      showToast(t('updateError'), 'error');
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditIdx(null);
-    setEditData(null);
   };
 
   // Calculate summary with proper error handling
