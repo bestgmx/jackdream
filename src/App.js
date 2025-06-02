@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
@@ -44,6 +44,8 @@ import {
   Download as DownloadIcon,
   LocalShipping as LocalShippingIcon
 } from '@mui/icons-material';
+import Select from 'react-select';
+import { FaTachometerAlt, FaUsers, FaUserFriends, FaExchangeAlt, FaMoneyCheckAlt, FaMoneyBillWave, FaShoppingCart, FaChartBar, FaChartPie } from 'react-icons/fa';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -70,6 +72,19 @@ ChartJS.register(
 );
 
 // Utility functions
+const validateInput = (value, type) => {
+  switch(type) {
+    case 'number':
+      return !isNaN(value) && Number(value) >= 0;
+    case 'orderNumber':
+      return /^[A-Za-z0-9-]+$/.test(value);
+    case 'description':
+      return value.length <= 500;
+    default:
+      return true;
+  }
+};
+
 const validateTransaction = (transaction) => {
   if (!transaction) return false;
   
@@ -92,6 +107,30 @@ const validateTransaction = (transaction) => {
     default:
       return false;
   }
+};
+
+const safeCalculate = (fn) => {
+  try {
+    return fn();
+  } catch (error) {
+    console.error('Calculation error:', error);
+    return 0;
+  }
+};
+
+const logError = (error, context) => {
+  console.error(`Error in ${context}:`, error);
+};
+
+const logTransaction = (transaction, action) => {
+  console.log(`Transaction ${action}:`, {
+    type: transaction.type,
+    amount: transaction.amount,
+    currency: transaction.currency,
+    person: transaction.person,
+    date: new Date().toISOString(),
+    user: transaction.user
+  });
 };
 
 const handleTransaction = (transaction, action) => {
@@ -280,6 +319,7 @@ function Login({ onLogin, isAuthenticated }) {
             id="login-username"
             name="username"
             autoComplete="username"
+            aria-label="نام کاربری"
           />
           <TextField
             fullWidth
@@ -291,6 +331,7 @@ function Login({ onLogin, isAuthenticated }) {
             id="login-password"
             name="password"
             autoComplete="current-password"
+            aria-label="رمز عبور"
           />
           <Button 
             type="submit" 
@@ -635,19 +676,20 @@ function Persons({ persons, setPersons, transactions }) {
       >
         <div>
           <label htmlFor="add-person-name">نام شخص</label>
-        <input
-          type="text"
-          placeholder="نام شخص"
-          value={name}
-          onChange={e => setName(e.target.value)}
+          <input
+            type="text"
+            placeholder="نام شخص"
+            value={name}
+            onChange={e => setName(e.target.value)}
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-          id="add-person-name"
-          name="personName"
+            id="add-person-name"
+            name="personName"
             autoComplete="off"
-        />
+            aria-label="نام شخص"
+          />
         </div>
         <button type="submit" className="btn-main">افزودن</button>
-      {error && <div className="error-msg">{error}</div>}
+        {error && <div className="error-msg">{error}</div>}
       </form>
       <ul style={{ padding: 0, listStyle: 'none', marginTop: 16 }}>
         {persons.map((p, idx) => (
@@ -763,12 +805,13 @@ function Receive({ persons, transactions, setTransactions, user }) {
             value={person} 
             onChange={e => setPerson(e.target.value)} 
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
+            aria-label="انتخاب شخص"
           >
-          <option value="">انتخاب شخص</option>
-          {persons.map((p, idx) => (
-            <option key={idx} value={p}>{p}</option>
-          ))}
-        </select>
+            <option value="">انتخاب شخص</option>
+            {persons.map((p, idx) => (
+              <option key={idx} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -779,57 +822,61 @@ function Receive({ persons, transactions, setTransactions, user }) {
             value={currency} 
             onChange={e => setCurrency(e.target.value)} 
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
+            aria-label="انتخاب ارز"
           >
-          {currencyList.map(c => (
-            <option key={c.code} value={c.code}>{c.labelFa}</option>
-          ))}
-        </select>
+            {currencyList.map(c => (
+              <option key={c.code} value={c.code}>{c.labelFa}</option>
+            ))}
+          </select>
         </div>
 
         <div>
           <label htmlFor="receive-amount">مبلغ</label>
-        <input
+          <input
             id="receive-amount"
             name="amount"
-          type="text"
-          placeholder="مبلغ"
-          value={amount}
-          onChange={handleAmountChange}
+            type="text"
+            placeholder="مبلغ"
+            value={amount}
+            onChange={handleAmountChange}
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-          inputMode="numeric"
-          autoComplete="off"
-        />
+            inputMode="numeric"
+            autoComplete="off"
+            aria-label="مبلغ"
+          />
         </div>
 
         {(currency === 'usd' || currency === 'cny') && (
           <div>
             <label htmlFor="receive-rate">ریت</label>
-          <input
+            <input
               id="receive-rate"
               name="rate"
-            type="text"
-            placeholder="ریت"
-            value={rate}
-            onChange={handleRateChange}
+              type="text"
+              placeholder="ریت"
+              value={rate}
+              onChange={handleRateChange}
               style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-            inputMode="numeric"
-            autoComplete="off"
-          />
+              inputMode="numeric"
+              autoComplete="off"
+              aria-label="ریت"
+            />
           </div>
         )}
 
         {(currency === 'usd' || currency === 'cny') && (
           <div>
             <label htmlFor="receive-sum">جمع</label>
-          <input
+            <input
               id="receive-sum"
               name="sum"
-            type="text"
-            placeholder="جمع"
-            value={sum}
-            readOnly
+              type="text"
+              placeholder="جمع"
+              value={sum}
+              readOnly
               style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', background: '#f5f5f5', width: '100%' }}
-          />
+              aria-label="جمع"
+            />
           </div>
         )}
 
@@ -1024,7 +1071,8 @@ function Pay({ persons, transactions, setTransactions, user }) {
             label={t('sender')}
             value={sender}
             onChange={e => setSender(e.target.value)}
-            error={!!error && error.includes(t('sender'))}
+            id="pay-sender"
+            name="sender"
           >
             <MenuItem value="">
               <em>{t('selectSender')}</em>
@@ -1040,7 +1088,8 @@ function Pay({ persons, transactions, setTransactions, user }) {
             label={t('receiver')}
             value={receiver}
             onChange={e => setReceiver(e.target.value)}
-            error={!!error && error.includes(t('receiver'))}
+            id="pay-receiver"
+            name="receiver"
           >
             <MenuItem value="">
               <em>{t('selectReceiver')}</em>
@@ -1052,64 +1101,34 @@ function Pay({ persons, transactions, setTransactions, user }) {
 
           <TextField
             fullWidth
-            label={t('usdAmount')}
-          value={amount}
-            onChange={e => {
-              let val = e.target.value;
-              // Only allow English numbers and decimal point
-              val = val.replace(/[^\d.]/g, '');
-              // Ensure only one decimal point
-              const parts = val.split('.');
-              if (parts.length > 2) {
-                val = parts[0] + '.' + parts.slice(1).join('');
-              }
-              // Format with commas for thousands
-              if (val) {
-                const numParts = val.split('.');
-                numParts[0] = Number(numParts[0]).toLocaleString('en-US');
-                val = numParts.join('.');
-              }
-              setAmount(val);
-            }}
-            error={!!error && error.includes(t('amount'))}
-            inputProps={{ inputMode: 'decimal' }}
+            label={t('amount')}
+            type="number"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            inputProps={{ min: 0 }}
+            id="pay-amount"
+            name="amount"
           />
 
           <TextField
             fullWidth
             label={t('conversionRate')}
+            type="number"
             value={rate}
-            onChange={e => {
-              let val = e.target.value;
-              // Only allow English numbers and decimal point
-              val = val.replace(/[^\d.]/g, '');
-              // Ensure only one decimal point
-              const parts = val.split('.');
-              if (parts.length > 2) {
-                val = parts[0] + '.' + parts.slice(1).join('');
-              }
-              // Allow up to 8 decimal places
-              if (parts.length > 1 && parts[1].length > 8) {
-                val = parts[0] + '.' + parts[1].substring(0, 8);
-              }
-              // Format with commas for thousands
-              if (val) {
-                const numParts = val.split('.');
-                numParts[0] = Number(numParts[0]).toLocaleString('en-US');
-                val = numParts.join('.');
-              }
-              setRate(val);
-            }}
-            error={!!error && error.includes(t('rate'))}
-            inputProps={{ inputMode: 'decimal' }}
+            onChange={e => setRate(e.target.value)}
+            inputProps={{ min: 0, step: 0.01 }}
+            id="pay-rate"
+            name="rate"
           />
 
           <TextField
             fullWidth
             label={t('cnyAmount')}
+            type="number"
             value={cnyAmount}
             InputProps={{ readOnly: true }}
-            sx={{ bgcolor: 'action.hover' }}
+            id="pay-cny-amount"
+            name="cnyAmount"
           />
 
           {sender && (
@@ -1196,11 +1215,11 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [orderStatus] = useState('pending'); // Remove setOrderStatus if not used
+  const [orderStatus, setOrderStatus] = useState('active');
   const [category, setCategory] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [orderNote, setOrderNote] = useState(''); // Remove setOrderNote if not used
+  const [orderNote, setOrderNote] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [editCategory, setEditCategory] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -1550,6 +1569,8 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
                 error={!!orderError}
                 helperText={orderError}
                 sx={{ mb: 2 }}
+                id="buy-order-number"
+                name="orderNumber"
               />
               <Button 
                 type="submit" 
@@ -1569,6 +1590,8 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
               value={selectedOrder}
               onChange={handleOrderSelect}
               sx={{ mb: 2 }}
+              id="buy-select-order"
+              name="selectedOrder"
             >
               <MenuItem value="">
                 <em>{t('selectOrder')}</em>
@@ -1607,6 +1630,8 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
               label={t('category')}
               value={category}
               onChange={e => setCategory(e.target.value)}
+              id="buy-category"
+              name="category"
             >
               <MenuItem value="">
                 <em>{t('selectCategory')}</em>
@@ -1619,10 +1644,12 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
             <TextField
               fullWidth
               label={t('amount')}
-          type="number"
+              type="number"
               value={amount}
               onChange={e => setAmount(e.target.value)}
               inputProps={{ min: 0 }}
+              id="buy-amount"
+              name="amount"
             />
 
             <TextField
@@ -1632,6 +1659,8 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
               onChange={e => setDescription(e.target.value)}
               multiline
               rows={2}
+              id="buy-description"
+              name="description"
             />
 
             <Button 
@@ -1963,6 +1992,8 @@ function Transfer({ persons, transactions, setTransactions, user }) {
             value={from}
             onChange={e => setFrom(e.target.value)}
             error={!!error && error.includes('فرستنده')}
+            id="transfer-from"
+            name="from"
           >
             <MenuItem value="">
               <em>انتخاب فرستنده</em>
@@ -1979,6 +2010,8 @@ function Transfer({ persons, transactions, setTransactions, user }) {
             value={to}
             onChange={e => setTo(e.target.value)}
             error={!!error && error.includes('گیرنده')}
+            id="transfer-to"
+            name="to"
           >
             <MenuItem value="">
               <em>انتخاب گیرنده</em>
@@ -1996,6 +2029,8 @@ function Transfer({ persons, transactions, setTransactions, user }) {
             onChange={e => setAmount(e.target.value)}
             error={!!error && error.includes('مبلغ')}
             inputProps={{ min: 0 }}
+            id="transfer-amount"
+            name="amount"
           />
 
           <TextField
@@ -2004,6 +2039,8 @@ function Transfer({ persons, transactions, setTransactions, user }) {
             label="ارز"
             value={currency}
             onChange={e => setCurrency(e.target.value)}
+            id="transfer-currency"
+            name="currency"
           >
             {currencyList.map(c => (
               <MenuItem key={c.code} value={c.code}>{c.labelFa}</MenuItem>
@@ -2042,83 +2079,17 @@ function Transfer({ persons, transactions, setTransactions, user }) {
   );
 }
 function Reports({ transactions, setTransactions, search, ToastContext }) {
-  const [editIdx, setEditIdx] = useState(null);
-  const [editData, setEditData] = useState(null);
+  const { showToast } = React.useContext(ToastContext || React.createContext());
   const [msg, setMsg] = useState('');
-  const [searchTerm] = useState('');
   const [deleteIdx, setDeleteIdx] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editIdx, setEditIdx] = useState(null);
+  const [editData, setEditData] = useState(null);
   const [selectedPerson, setSelectedPerson] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { showToast } = useContext(ToastContext);
-
-  // Fix useCallback dependencies
-  const handleEdit = useCallback((idx) => {
-    const transaction = transactions[idx];
-    if (!transaction) return;
-    setEditIdx(idx);
-    setEditData({...transaction});
-  }, [transactions]);
-
-  const saveEdit = useCallback(() => {
-    if (!editData || !validateTransaction(editData)) {
-      setMsg(t('invalidTransactionData'));
-      return;
-    }
-
-    if (handleTransaction(editData, 'updated')) {
-      const newTransactions = [...transactions];
-      newTransactions[editIdx] = editData;
-      setTransactions(newTransactions);
-      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
-      setMsg(t('transactionUpdated'));
-      showToast(t('transactionUpdated'), 'success');
-      setEditIdx(null);
-      setEditData(null);
-      setTimeout(() => setMsg(''), 1500);
-    } else {
-      setMsg(t('updateError'));
-      showToast(t('updateError'), 'error');
-    }
-  }, [editData, editIdx, transactions, setTransactions, t, showToast]);
-
-  const cancelEdit = useCallback(() => {
-    setEditIdx(null);
-    setEditData(null);
-  }, []);
-
-  const handleDelete = useCallback(idx => {
-    setDeleteIdx(idx);
-    setShowDeleteModal(true);
-  }, []);
-
-  const confirmDelete = useCallback(() => {
-    if (deleteIdx === null) return;
-    
-    const transaction = transactions[deleteIdx];
-    if (!transaction) {
-      setMsg(t('transactionNotFound'));
-      return;
-    }
-
-    if (handleTransaction(transaction, 'deleted')) {
-      const newTransactions = transactions.filter((_, i) => i !== deleteIdx);
-      setTransactions(newTransactions);
-      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
-      setMsg(t('transactionDeleted'));
-      showToast(t('transactionDeleted'), 'success');
-      setDeleteIdx(null);
-      setShowDeleteModal(false);
-      setTimeout(() => setMsg(''), 1500);
-    } else {
-      setMsg(t('deleteError'));
-      showToast(t('deleteError'), 'error');
-    }
-  }, [deleteIdx, transactions, setTransactions, t, showToast]);
 
   // Get unique persons from transactions
   const getUniquePersons = () => {
@@ -2182,6 +2153,70 @@ function Reports({ transactions, setTransactions, search, ToastContext }) {
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return filtered;
+  };
+
+  const handleDelete = idx => {
+    setDeleteIdx(idx);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteIdx === null) return;
+    
+    const transaction = transactions[deleteIdx];
+    if (!transaction) {
+      setMsg(t('transactionNotFound'));
+      return;
+    }
+
+    if (handleTransaction(transaction, 'deleted')) {
+      const newTransactions = transactions.filter((_, i) => i !== deleteIdx);
+      setTransactions(newTransactions);
+      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
+      setMsg(t('transactionDeleted'));
+      showToast(t('transactionDeleted'), 'success');
+    setDeleteIdx(null);
+      setShowDeleteModal(false);
+    setTimeout(() => setMsg(''), 1500);
+    } else {
+      setMsg(t('deleteError'));
+      showToast(t('deleteError'), 'error');
+    }
+  };
+
+  const handleEdit = (idx) => {
+    const transaction = transactions[idx];
+    if (!transaction) return;
+    
+    setEditIdx(idx);
+    setEditData({...transaction});
+  };
+
+  const saveEdit = () => {
+    if (!editData || !validateTransaction(editData)) {
+      setMsg(t('invalidTransactionData'));
+      return;
+    }
+
+    if (handleTransaction(editData, 'updated')) {
+      const newTransactions = [...transactions];
+      newTransactions[editIdx] = editData;
+      setTransactions(newTransactions);
+      saveToLocalStorage(STORAGE_KEYS.TRANSACTIONS, newTransactions);
+      setMsg(t('transactionUpdated'));
+      showToast(t('transactionUpdated'), 'success');
+      setEditIdx(null);
+      setEditData(null);
+      setTimeout(() => setMsg(''), 1500);
+    } else {
+      setMsg(t('updateError'));
+      showToast(t('updateError'), 'error');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditIdx(null);
+    setEditData(null);
   };
 
   // Calculate summary with proper error handling
@@ -3116,6 +3151,7 @@ function AppContent(props) {
   const [products, setProducts] = useState(() => loadFromLocalStorage(STORAGE_KEYS.PRODUCTS) || []);
   const [search, setSearch] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [theme, setTheme] = useState('light');
   const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
@@ -3241,6 +3277,10 @@ function AppContent(props) {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleDrawerOpenToggle = () => {
+    setDrawerOpen(!drawerOpen);
+  };
+
   const menuItems = [
     { text: t('dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
     { text: t('persons'), icon: <PeopleIcon />, path: '/persons' },
@@ -3287,6 +3327,15 @@ function AppContent(props) {
             >
               <MenuIcon />
             </IconButton>
+            <IconButton
+              color="inherit"
+              aria-label="toggle drawer"
+              edge="start"
+              onClick={handleDrawerOpenToggle}
+              sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}
+            >
+              <MenuIcon />
+            </IconButton>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               {renderDataManagementButtons()}
               <Button 
@@ -3311,7 +3360,7 @@ function AppContent(props) {
         {renderNotifications()}
         <Box
           component="nav"
-          sx={{ width: { sm: 250 }, flexShrink: { sm: 0 } }}
+          sx={{ width: { sm: drawerOpen ? 250 : 0 }, flexShrink: { sm: 0 } }}
         >
           <Drawer
             variant="temporary"
@@ -3331,9 +3380,14 @@ function AppContent(props) {
             variant="permanent"
             sx={{
               display: { xs: 'none', sm: 'block' },
-              '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 250 },
+              '& .MuiDrawer-paper': { 
+                boxSizing: 'border-box', 
+                width: drawerOpen ? 250 : 0,
+                transition: 'width 0.2s ease-in-out',
+                overflowX: 'hidden'
+              },
             }}
-            open
+            open={drawerOpen}
           >
             {drawer}
           </Drawer>
@@ -3343,7 +3397,8 @@ function AppContent(props) {
           sx={{
             flexGrow: 1,
             p: 3,
-            width: { sm: `calc(100% - 250px)` },
+            width: { sm: `calc(100% - ${drawerOpen ? 250 : 0}px)` },
+            transition: 'width 0.2s ease-in-out',
             mt: '64px'
           }}
         >
