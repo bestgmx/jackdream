@@ -676,20 +676,20 @@ function Persons({ persons, setPersons, transactions }) {
       >
         <div>
           <label htmlFor="add-person-name">نام شخص</label>
-          <input
-            type="text"
-            placeholder="نام شخص"
-            value={name}
-            onChange={e => setName(e.target.value)}
+        <input
+          type="text"
+          placeholder="نام شخص"
+          value={name}
+          onChange={e => setName(e.target.value)}
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-            id="add-person-name"
-            name="personName"
+          id="add-person-name"
+          name="personName"
             autoComplete="off"
             aria-label="نام شخص"
-          />
+        />
         </div>
         <button type="submit" className="btn-main">افزودن</button>
-        {error && <div className="error-msg">{error}</div>}
+      {error && <div className="error-msg">{error}</div>}
       </form>
       <ul style={{ padding: 0, listStyle: 'none', marginTop: 16 }}>
         {persons.map((p, idx) => (
@@ -807,11 +807,11 @@ function Receive({ persons, transactions, setTransactions, user }) {
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
             aria-label="انتخاب شخص"
           >
-            <option value="">انتخاب شخص</option>
-            {persons.map((p, idx) => (
-              <option key={idx} value={p}>{p}</option>
-            ))}
-          </select>
+          <option value="">انتخاب شخص</option>
+          {persons.map((p, idx) => (
+            <option key={idx} value={p}>{p}</option>
+          ))}
+        </select>
         </div>
 
         <div>
@@ -824,59 +824,59 @@ function Receive({ persons, transactions, setTransactions, user }) {
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
             aria-label="انتخاب ارز"
           >
-            {currencyList.map(c => (
-              <option key={c.code} value={c.code}>{c.labelFa}</option>
-            ))}
-          </select>
+          {currencyList.map(c => (
+            <option key={c.code} value={c.code}>{c.labelFa}</option>
+          ))}
+        </select>
         </div>
 
         <div>
           <label htmlFor="receive-amount">مبلغ</label>
-          <input
+        <input
             id="receive-amount"
             name="amount"
-            type="text"
-            placeholder="مبلغ"
-            value={amount}
-            onChange={handleAmountChange}
+          type="text"
+          placeholder="مبلغ"
+          value={amount}
+          onChange={handleAmountChange}
             style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-            inputMode="numeric"
-            autoComplete="off"
+          inputMode="numeric"
+          autoComplete="off"
             aria-label="مبلغ"
-          />
+        />
         </div>
 
         {(currency === 'usd' || currency === 'cny') && (
           <div>
             <label htmlFor="receive-rate">ریت</label>
-            <input
+          <input
               id="receive-rate"
               name="rate"
-              type="text"
-              placeholder="ریت"
-              value={rate}
-              onChange={handleRateChange}
+            type="text"
+            placeholder="ریت"
+            value={rate}
+            onChange={handleRateChange}
               style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', width: '100%' }}
-              inputMode="numeric"
-              autoComplete="off"
+            inputMode="numeric"
+            autoComplete="off"
               aria-label="ریت"
-            />
+          />
           </div>
         )}
 
         {(currency === 'usd' || currency === 'cny') && (
           <div>
             <label htmlFor="receive-sum">جمع</label>
-            <input
+          <input
               id="receive-sum"
               name="sum"
-              type="text"
-              placeholder="جمع"
-              value={sum}
-              readOnly
+            type="text"
+            placeholder="جمع"
+            value={sum}
+            readOnly
               style={{ padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #bbb', background: '#f5f5f5', width: '100%' }}
               aria-label="جمع"
-            />
+          />
           </div>
         )}
 
@@ -1103,7 +1103,7 @@ function Pay({ persons, transactions, setTransactions, user }) {
             fullWidth
             label={t('amount')}
             type="number"
-            value={amount}
+          value={amount}
             onChange={e => setAmount(e.target.value)}
             inputProps={{ min: 0 }}
             id="pay-amount"
@@ -1644,7 +1644,7 @@ function Buy({ persons, products, setProducts, transactions, setTransactions, us
             <TextField
               fullWidth
               label={t('amount')}
-              type="number"
+          type="number"
               value={amount}
               onChange={e => setAmount(e.target.value)}
               inputProps={{ min: 0 }}
