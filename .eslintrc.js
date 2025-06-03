@@ -4,5 +4,8 @@ module.exports = {
     'no-unused-vars': 'warn',
     'default-case': 'warn',
     'react-hooks/exhaustive-deps': 'warn'
+  },
+  env: {
+    production: true
   }
 }; 
